@@ -87,6 +87,16 @@ def xywh2xyxy(x):
     return y
 
 
+def box_iou(box1, box2):
+    def box_area(box):
+        return (box[2] - box[0]) * (box[3] - box[1])
+    area1 = box_area(box1.T)
+    area2 = box_area(box2.T)
+    inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) -
+             torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
+    return inter / (area1[:, None] + area2 - inter)
+
+
 def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
                         labels=()):
 
@@ -161,6 +171,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
         if i.shape[0] > max_det:  # limit detections
             i = i[:max_det]
+        merge = True
         if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)
             # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
             iou = box_iou(boxes[i], boxes) > iou_thres  # iou matrix
